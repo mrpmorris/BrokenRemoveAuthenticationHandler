@@ -35,6 +35,8 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
         var principal = new ClaimsPrincipal(identity);
 
         var ticket = new AuthenticationTicket(principal, "myauth");
+        ticket.Properties.RedirectUri = "/Account/ExternalLogin?ReturnUrl=&Action=LoginCallback";
+        ticket.Properties.Items.Add("LoginProvider", "myauth");
         return Task.FromResult(HandleRequestResult.Success(ticket));
     }
 }
