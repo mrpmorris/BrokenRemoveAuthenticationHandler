@@ -1,7 +1,7 @@
 ﻿@page "/my-sign-in-page"
-<form action="/signin-myauth" method="post">
-    <input type="hidden" name="RedirectUri" value="@RedirectUri" />
-    <input type="hidden" name="XsrfId" value="@XsrfId" />
+<form action="signin-myauth" method="post" @formname="sign-in">
+   <AntiforgeryToken/>
+    <input type="hidden" name="State" value=@State />
    <button type="submit">Click here to sign in</button>
 </form>
 
@@ -11,6 +11,5 @@
     private string? RedirectUri { get; set; }
 
     [SupplyParameterFromQuery]
-    private string? XsrfId { get; set; }
-
+    private string? State { get; set; }
 }
