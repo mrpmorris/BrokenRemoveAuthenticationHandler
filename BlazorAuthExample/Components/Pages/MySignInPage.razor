@@ -1,4 +1,16 @@
 ﻿@page "/my-sign-in-page"
 <form action="/signin-myauth" method="post">
+    <input type="hidden" name="RedirectUri" value="@RedirectUri" />
+    <input type="hidden" name="XsrfId" value="@XsrfId" />
    <button type="submit">Click here to sign in</button>
 </form>
+
+@code {
+
+    [SupplyParameterFromQuery]
+    private string? RedirectUri { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? XsrfId { get; set; }
+
+}

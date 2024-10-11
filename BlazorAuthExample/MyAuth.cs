@@ -24,7 +24,15 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        Context.Response.Redirect("/my-sign-in-page");
+        var url = "/my-sign-in-page?RedirectUri=" + Uri.EscapeDataString(properties.RedirectUri ?? "");
+
+        if (properties.Items.TryGetValue("XsrfId", out var xsrfId))
+        {
+            url += "&xsrfId=" + xsrfId;
+        }
+
+        Context.Response.Redirect(url);
+
         return Task.CompletedTask;
     }
 
@@ -35,8 +43,14 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
         var principal = new ClaimsPrincipal(identity);
 
         var ticket = new AuthenticationTicket(principal, "myauth");
-        ticket.Properties.RedirectUri = "/Account/ExternalLogin?ReturnUrl=&Action=LoginCallback";
+
+        ticket.Properties.RedirectUri = Context.Request.Form["RedirectUri"];
         ticket.Properties.Items.Add("LoginProvider", "myauth");
+        if (Context.Request.Form.TryGetValue("XsrfId", out var xsrfId))
+        {
+            ticket.Properties.Items.Add("XsrfId", xsrfId);
+        }
+
         return Task.FromResult(HandleRequestResult.Success(ticket));
     }
 }
