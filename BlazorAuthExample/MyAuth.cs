@@ -60,7 +60,7 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
 
         if (!properties.Items.TryGetValue(".redirect", out string? redirect))
             redirect = properties.RedirectUri;
-        stateDictionary["MyAuth_Redirect"] = redirect;
+        stateDictionary[".redirect"] = redirect;
 
         stateDictionary["LoginProvider"] = "MyAuth";
 
@@ -84,8 +84,8 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
             return Task.FromResult(HandleRequestResult.Fail("State was missing or invalid."));
         }
 
-        ticket.Properties.RedirectUri = stateDictionary["MyAuth_Redirect"];
-        foreach (var kvp in stateDictionary.Where(x => !x.Key.StartsWith("MyAuth_")))
+        ticket.Properties.RedirectUri = stateDictionary[".redirect"];
+        foreach (var kvp in stateDictionary)
             ticket.Properties.Items[kvp.Key] = kvp.Value;
 
 
