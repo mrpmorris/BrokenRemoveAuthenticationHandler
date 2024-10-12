@@ -33,7 +33,12 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         if (string.IsNullOrEmpty(properties.RedirectUri))
-            properties.RedirectUri = base.OriginalPathBase + base.OriginalPath + base.Request.QueryString;
+        {
+            if (properties.Items.TryGetValue(".redirect", out string? redirect))
+                properties.RedirectUri = redirect;
+            else
+                properties.RedirectUri = OriginalPathBase + OriginalPath + Request.QueryString;
+        }
 
         string challengeUrl = BuildChallengeUrl(properties);
         Context.Response.Redirect(challengeUrl);
@@ -42,15 +47,22 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
 
     private string BuildChallengeUrl(AuthenticationProperties properties)
     {
+        var stateDictionary = new Dictionary<string, string?>();
+
+        if (properties.Items.TryGetValue("XsrfId", out string? xsrfId))
+            stateDictionary["XsrfId"] = xsrfId;
+
+        if (!properties.Items.TryGetValue(".redirect", out string? redirect))
+            redirect = properties.RedirectUri;
+        stateDictionary["MyAuth_Redirect"] = redirect;
+
+        stateDictionary["LoginProvider"] = "MyAuth";
+
+        string stateJson = JsonSerializer.Serialize(stateDictionary);
+        string stateJsonProtected = GetDataProtector().Protect(stateJson);
+
         string endpoint = "/my-sign-in-page";
-        var dictionary = new Dictionary<string, StringValues>();
-        dictionary["RedirectUri"] = properties.RedirectUri ?? "";
-
-        string itemsJson = JsonSerializer.Serialize(properties.Items);
-        string itemsProtectedString = GetDataProtector().Protect(itemsJson);
-        dictionary.Add("state", itemsProtectedString);
-
-        string result = QueryHelpers.AddQueryString(endpoint, dictionary);
+        string result = QueryHelpers.AddQueryString(endpoint, "state", stateJsonProtected);
         return result;
     }
 
@@ -62,10 +74,12 @@ public class MyAuthHandler : RemoteAuthenticationHandler<MyAuthOptions>
 
         var ticket = new AuthenticationTicket(principal, "myauth");
 
-        string protectedState = Context.Request.Form["state"]!;
-        string itemsJson = GetDataProtector().Unprotect(protectedState);
-        var stateDictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(itemsJson)!;
-        foreach(var kvp in stateDictionary)
+        string stateJsonProtected = Context.Request.Form["state"]!;
+        string stateJson = GetDataProtector().Unprotect(stateJsonProtected);
+        var stateDictionary = JsonSerializer.Deserialize<Dictionary<string, string?>>(stateJson)!;
+
+        ticket.Properties.RedirectUri = stateDictionary["MyAuth_Redirect"];
+        foreach(var kvp in stateDictionary.Where(x => !x.Key.StartsWith("MyAuth_")))
             ticket.Properties.Items[kvp.Key] = kvp.Value;
 
         return Task.FromResult(HandleRequestResult.Success(ticket));
